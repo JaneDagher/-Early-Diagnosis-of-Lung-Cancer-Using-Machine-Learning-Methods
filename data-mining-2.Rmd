@@ -1,0 +1,1500 @@
+---
+title: "Early Diagnosis of Lung Cancer Using Machine Learning Methods"
+author: "Jane Dagher"
+date: "9-12-2023"
+output:
+  html_document:
+    number_sections: no
+    theme: sandstone
+    toc: true
+    toc_depth: 3
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
+---
+
+![](lung.png) 
+
+> # **Real World Problem**
+
+*For the final project, the opportunity to select a machine learning problem of personal interest and relevance is provided. This project has been designed to allow the application of the concepts and techniques learned throughout the course to a real-world scenario.*
+
+*The key components of the project encompass dataset selection, data exploration, model development, and result interpretation.*
+
+***
+
+> # **1- Problem Selection**
+
+Constructing a machine learning model for the diagnosis of lung cancer is of paramount importance due to its potential to facilitate early detection and enhance the accuracy of predictions. 
+
+```{r}
+# Required library
+library(ggplot2)
+
+# Cancer data with the provided percentages
+cancer_data <- data.frame(
+  CancerType = c("Lung and Bronchus 21% ", "Colon and Rectum 9% ", "Pancreas 8% ", "Breast 7% ", "Other 55% "),
+  Percentage = c(21, 9, 8, 7, 55)
+)
+
+# Specify the colors for each cancer type
+colors <- c("Lung and Bronchus 21% " = "maroon", 
+            "Colon and Rectum 9% " = "bisque3", 
+            "Pancreas 8% " = "darkseagreen3", 
+            "Breast 7% " = "deepskyblue4", 
+            "Other 55% " = "cyan4")
+
+
+
+# Creating the pie chart
+ggplot(cancer_data, aes(x = "", y = Percentage, fill = CancerType)) +
+  geom_bar(width = 1, stat = "identity") +
+  coord_polar("y", start = 0) +
+  scale_fill_manual(values = colors) + # Use custom colors
+  theme_void() +
+  ggtitle("Cancer Deaths, 2023") + # Set the title
+  labs(fill = "Cancer Type", 
+       caption = "Source: [National Cancer Institute](https://seer.cancer.gov/statfacts/html/common.html)")
+
+# Note: The percentages are sourced from the National Cancer Institute's webpage on common cancer types: 
+# https://seer.cancer.gov/statfacts/html/common.html
+```
+*The pie chart titled "Cancer Deaths, 2023" displays the proportion of deaths from various types of cancer. Notably, lung and bronchus cancer is the most prevalent among specified types, accounting for 21% of cancer deaths, indicating it is a leading cause of cancer mortality. This percentage is more than double the next most common cause, colon and rectum cancer, which stands at 9%. The chart highlights lung and bronchus cancer as a significant health concern relative to other individual cancer types listed.*
+
+So, the inclusion of diverse features such as Sex, Age, Smoking, Yellow_fingers, Anxiety, Peer_pressure, Chronic_disease, Fatigue, Allergy, Wheezing, Alcohol, Coughing, Shortness_of_breath, Swallowing_difficulty, and Chest_pain enables the model to consider a wide array of factors associated with the disease. 
+
+By leveraging machine learning, the model can discern intricate patterns and relationships within the data, contributing to early identification of lung cancer. Furthermore, the objectivity of machine learning analyses minimizes the impact of subjective biases, ensuring a more reliable and consistent approach to diagnosis. Ultimately, the integration of multiple factors and the data-driven decision-making process make machine learning an valuable tool in the quest for accurate and timely lung cancer diagnosis, with significant implications for improving patient outcomes.
+
+> # **2- Dataset selection**
+
+The selected dataset includes attributes mainly focused on health factors related to lung cancer:
+
+1. *Sex*: Gender of the individual, either male (M) or female (F).
+2. *Age*: Age of the individual.
+3. *Smoking*: Indicates whether the individual smokes, with options being yes or no.
+4. *Yellow_fingers*: Sign of yellow fingers, potentially indicating smoking habits, with options being yes or no.
+5. *Anxiety*: Indicates whether the individual experiences anxiety, with options being yes or no.
+6. *Peer_pressure*: Whether peer pressure is a factor, with options being yes or no.
+7. *Chronic_disease*: Indicates the presence of any chronic disease, with options being yes or no.
+8. *Fatigue*: Signs of fatigue, with options being yes or no.
+9. *Allergy*: Indicates whether the individual has allergies, with options being yes or no.
+10. *Wheezing*: The occurrence of wheezing, with options being yes or no.
+11. *Alcohol*: Indicates alcohol consumption, with options being yes or no.
+12. *Coughing*: Presence of coughing, with options being yes or no.
+13. *Shortness_of_breath*: Whether the individual experiences shortness of breath, with options being yes or no.
+14. *Swallowing_difficulty*: Difficulty in swallowing, with options being yes or no.
+15. *Chest_pain*: The occurrence of chest pain, with options being yes or no.
+16. *Lung_cancer*: Indicates whether the individual has lung cancer, with options being yes or no.
+
+This dataset seems particularly suited for exploring the relationship between lifestyle factors (like smoking and alcohol consumption) and the risk of developing lung cancer. It provides a comprehensive view of various risk factors and could be used in predictive modeling to assess lung cancer risk.
+
+> # **3- Data Exploration **
+
+- **Reading the dataset:**
+
+```{r collapse=TRUE, warning=FALSE}
+
+# Load necessary libraries
+library(readr)
+
+# Load the dataset
+data <- read_csv("DataMiningDataSet.csv", show_col_types = FALSE)
+
+# Summary of the dataset
+summary(data)
+
+# View the first few rows of the dataset
+head(data)
+
+# Check for missing values in the dataset
+sum(is.na(data))
+
+```
+
+### Visualizing the Data
+
+```{r} 
+library(ggplot2)
+
+# Bar plot for Sex vs Lung_cancer
+ggplot(data, aes(x = Sex, fill = Lung_cancer)) +
+  geom_bar(position = "dodge") +
+  scale_fill_manual(values = c("No" = "darkseagreen4", "Yes" = "brown4")) +
+  labs(title = "Sex vs Lung Cancer", x = "Sex", y = "Count") +
+  theme_minimal()
+
+```
+
+*From this plot, it appears that a larger number of males have lung cancer compared to females. On another hand, the count of females without lung cancer is higher than that of males. .*
+
+```{r}
+# Box plot for Age vs Lung_cancer
+ggplot(data, aes(x = Lung_cancer, y = Age, fill = Lung_cancer)) +
+  geom_boxplot() +
+  scale_fill_manual(values = c("No" = "darkseagreen4", "Yes" = "brown4")) +
+  labs(title = "Age vs Lung Cancer", x = "Lung Cancer", y = "Age") +
+  theme_minimal()
+
+```
+
+*The box plot indicates that individuals with lung cancer are generally older with a wider age range compared to those without lung cancer.*
+  
+```{r}
+# Bar plot for Smoking vs Lung_cancer
+ggplot(data, aes(x = Smoking, fill = Lung_cancer)) +
+  geom_bar(position = "dodge") +
+  scale_fill_manual(values = c("No" = "darkseagreen4", "Yes" = "brown4")) +
+  labs(title = "Smoking vs Lung Cancer", x = "Smoking", y = "Count") +
+  theme_minimal()
+
+```
+
+*The bar graph shows a significant higher count of lung cancer cases among individuals who smoke compared to those who do not.*
+
+```{r}
+
+# Bar plot for Yellow_fingers vs Lung_cancer
+ggplot(data, aes(x = Yellow_fingers, fill = Lung_cancer)) +
+  geom_bar(position = "dodge") +
+  scale_fill_manual(values = c("No" = "darkseagreen4", "Yes" = "brown4")) +
+  labs(title = "Yellow fingers vs Lung Cancer", x = "Yellow fingers", y = "Count") +
+  theme_minimal()
+
+```
+
+*The bar graph suggests that individuals with yellow fingers have a significantly higher incidence of lung cancer than those without.*
+
+```{r}
+# Bar plot for Anxiety vs Lung_cancer
+ggplot(data, aes(x = Anxiety, fill = Lung_cancer)) +
+  geom_bar(position = "dodge") +
+  scale_fill_manual(values = c("No" = "darkseagreen4", "Yes" = "brown4")) +
+  labs(title = "Anxiety vs Lung Cancer", x = "Anxiety", y = "Count") +
+  theme_minimal()
+
+```
+
+*The bar chart depicts a higher occurrence of lung cancer in individuals who experience anxiety compared to those who do not.*
+
+```{r}
+# Bar plot for Peer_pressure vs Lung_cancer
+ggplot(data, aes(x = Peer_pressure, fill = Lung_cancer)) +
+  geom_bar(position = "dodge") +
+  scale_fill_manual(values = c("No" = "darkseagreen4", "Yes" = "brown4")) +
+  labs(title = "Peer pressure vs Lung Cancer", x = "Peer pressure", y = "Count") +
+  theme_minimal()
+
+```
+
+*The chart indicates that individuals who experience peer pressure have a higher prevalence of lung cancer than those who do not.*
+
+```{r}
+
+# Bar plot for Chronic_disease vs Lung_cancer
+ggplot(data, aes(x = Chronic_disease, fill = Lung_cancer)) +
+  geom_bar(position = "dodge") +
+  scale_fill_manual(values = c("No" = "darkseagreen4", "Yes" = "brown4")) +
+  labs(title = "Chronic disease vs Lung Cancer", x = "Chronic disease", y = "Count") +
+  theme_minimal()
+
+
+```
+
+*The graph suggests a higher incidence of lung cancer in individuals with chronic diseases compared to those without.*
+
+```{r}
+# Bar plot for Fatigue vs Lung_cancer
+ggplot(data, aes(x = Fatigue, fill = Lung_cancer)) +
+  geom_bar(position = "dodge") +
+  scale_fill_manual(values = c("No" = "darkseagreen4", "Yes" = "brown4")) +
+  labs(title = "Fatigue vs Lung Cancer", x = "Fatigue", y = "Count") +
+  theme_minimal()
+```
+
+*The bar chart indicates a substantially higher number of lung cancer cases among individuals who experience fatigue.*
+
+```{r}
+
+# Bar plot for Allergy vs Lung_cancer
+ggplot(data, aes(x = Allergy, fill = Lung_cancer)) +
+  geom_bar(position = "dodge") +
+  scale_fill_manual(values = c("No" = "darkseagreen4", "Yes" = "brown4")) +
+  labs(title = "Allergy vs Lung Cancer", x = "Allergy", y = "Count") +
+  theme_minimal()
+
+```
+
+*The graph depicts a higher number of lung cancer cases among individuals with allergies compared to those without allergies.*
+
+```{r}
+
+# Bar plot for Wheezing vs Lung_cancer
+ggplot(data, aes(x = Wheezing, fill = Lung_cancer)) +
+  geom_bar(position = "dodge") +
+  scale_fill_manual(values = c("No" = "darkseagreen4", "Yes" = "brown4")) +
+  labs(title = "Wheezing vs Lung Cancer", x = "Wheezing", y = "Count") +
+  theme_minimal()
+
+
+```
+
+*The chart demonstrates a notably higher frequency of lung cancer among individuals who have wheezing symptoms.*
+
+```{r}
+# Bar plot for Alcohol vs Lung_cancer
+ggplot(data, aes(x = Alcohol, fill = Lung_cancer)) +
+  geom_bar(position = "dodge") +
+  scale_fill_manual(values = c("No" = "darkseagreen4", "Yes" = "brown4")) +
+  labs(title = "Alcohol vs Lung Cancer", x = "Alcohol", y = "Count") +
+  theme_minimal()
+
+```
+
+*The graph shows a higher incidence of lung cancer among individuals who consume alcohol compared to those who do not.*
+
+```{r}
+# Bar plot for Coughing vs Lung_cancer
+ggplot(data, aes(x = Coughing, fill = Lung_cancer)) +
+  geom_bar(position = "dodge") +
+  scale_fill_manual(values = c("No" = "darkseagreen4", "Yes" = "brown4")) +
+  labs(title = "Coughing vs Lung Cancer", x = "Coughing", y = "Count") +
+  theme_minimal()
+```
+
+*The chart shows a much higher number of lung cancer cases among individuals who report coughing compared to those who do not.*
+
+```{r}
+
+# Bar plot for Shortness_of_breath vs Lung_cancer
+ggplot(data, aes(x = Shortness_of_breath, fill = Lung_cancer)) +
+  geom_bar(position = "dodge") +
+  scale_fill_manual(values = c("No" = "darkseagreen4", "Yes" = "brown4")) +
+  labs(title = "Shortness of breath vs Lung Cancer", x = "Shortness of breath", y = "Count") +
+  theme_minimal()
+
+```
+
+*The graph illustrates a significantly higher number of lung cancer cases in individuals who experience shortness of breath.*
+
+
+```{r}
+
+# Bar plot for Chest_pain vs Lung_cancer
+ggplot(data, aes(x = Chest_pain, fill = Lung_cancer)) +
+  geom_bar(position = "dodge") +
+  scale_fill_manual(values = c("No" = "darkseagreen4", "Yes" = "brown4")) +
+  labs(title = "Chest pain vs Lung Cancer", x = "Chest pain", y = "Count") +
+  theme_minimal()
+
+```
+
+*The graph indicates a substantially higher occurrence of lung cancer among individuals reporting chest pain.*
+
+```{r}
+# Bar chart for Lung_cancer
+
+ggplot(data, aes(x = Lung_cancer)) + 
+  geom_bar(fill = "deepskyblue4") + 
+  labs(title = "Distribution of patients Suffering from Lung_cancer", x = "Lung_cancer", y = "Count")
+
+```
+
+*Most patients suffer from lung cancer and little who do not.*
+
+**Conclusion: **
+
+In conclusion, the exploratory data analysis of the dataset reveals several key insights into the relationship between various factors and the incidence of lung cancer. The analysis indicates that lung cancer is more prevalent among males than females and is generally associated with older age groups. Lifestyle factors such as smoking, alcohol consumption, and exposure to peer pressure appear to be significantly associated with a higher incidence of lung cancer. Health indicators including the presence of yellow fingers, anxiety, chronic diseases, fatigue, allergies, wheezing symptoms, coughing, shortness of breath, and chest pain are all linked to higher lung cancer occurrences. Overall, these findings suggest a strong correlation between certain lifestyle choices, health symptoms, and the risk of developing lung cancer, emphasizing the importance of targeted health interventions and risk assessments for at-risk populations.
+
+
+### Contingency tables and Hypothesis Testing
+
+```{r collapse=TRUE, warning=FALSE}
+
+print(paste("Contingency Table for Lung_cancer and Sex"))
+xtabs(~Lung_cancer + Sex, data = data)
+
+```
+
+- In Table 1, depicting the contingency between lung cancer and gender, it seems that gender is not a highly indicative factor for predicting the presence or absence of lung cancer. The counts of "No" and "Yes" responses are fairly comparable for both females (F) and males (M). Specifically, females have 22 "No" and 125 "Yes" cases, while males have 17 "No" and 145 "Yes" cases. This balanced distribution implies that the occurrence of lung cancer is not strongly influenced by gender in this dataset. Considering this, it might be reasonable to contemplate excluding gender as a feature in subsequent analyses, as it may not offer substantial discriminatory information for predicting lung cancer.
+
+```{r  collapse=TRUE, warning=FALSE}
+
+# Perform Chi-square test for Lung_cancer and Sex
+lung_cancer_sex_test <- chisq.test(xtabs(~Lung_cancer + Sex, data = data))
+
+# Output the result
+print(lung_cancer_sex_test)
+
+# Interpret and report based on p-value
+p_value <- lung_cancer_sex_test$p.value
+if (p_value < 0.05) {
+  interpretation <- "There is a significant association between sex and lung cancer."
+} else {
+  interpretation <- "There is no significant association between sex and lung cancer."
+}
+
+# Print the interpretation
+print(interpretation)
+
+
+```
+
+```{r collapse=TRUE, warning=FALSE}
+
+print(paste("Contingency Table for Lung_cancer and Age"))
+xtabs(~Lung_cancer + Age, data = data)
+
+```
+
+- In Table 2, which outlines the contingency between lung cancer and age, discernible patterns emerge regarding the potential relevance of age in predicting the presence or absence of lung cancer. Notably, certain age groups exhibit a higher frequency of "Yes" responses, indicating the presence of lung cancer. For instance, individuals aged 55, 56, 57, 58, and 63 have relatively elevated counts of "Yes" cases, suggesting a potential correlation between these age brackets and the occurrence of lung cancer. Conversely, specific age groups like 21, 38, 39, 44, 46, 47, 48, 49, and 87 demonstrate no instances of "Yes" responses, hinting at a potential lower risk within these age ranges. These findings imply that age might offer valuable insights for predicting lung cancer in this dataset. Further statistical analyses could help substantiate the significance of these associations and inform the construction of a predictive model.
+
+```{r collapse=TRUE, warning=FALSE}
+
+# Perform Chi-square test for Lung_cancer and Age
+test_result <- chisq.test(xtabs(~Lung_cancer + Age, data = data))
+
+# Output the result
+print(test_result)
+
+# Interpret and report
+if (test_result$p.value < 0.05) {
+  print("There is a significant association between sex and lung cancer.")
+} else {
+  print("There is no significant association between sex and lung cancer.")
+}
+
+```
+
+```{r collapse=TRUE, warning=FALSE}
+
+print(paste("Contingency Table for Lung_cancer and Smoking"))
+xtabs(~Lung_cancer + Smoking, data = data)
+
+```
+
+- In Table 3, depicting the relationship between lung cancer and smoking, a notable trend emerges. Individuals who smoke (Yes) exhibit a higher frequency of lung cancer (Yes) compared to non-smokers (No). Specifically, among non-smokers, there are 20 cases of "No" and 19 cases of "Yes," while among smokers, there are 115 cases of "No" and 155 cases of "Yes." This indicates a potential link between smoking and the likelihood of lung cancer, suggesting that smoking could be a significant factor for predicting lung cancer in this dataset. Further analysis and model construction are warranted to validate and leverage this association in predictive modeling.
+
+```{r}
+# Perform Chi-square test for Lung_cancer and Smoking
+lung_cancer_smoking_test <- chisq.test(xtabs(~Lung_cancer + Smoking, data = data))
+
+# Output the result
+print(lung_cancer_smoking_test)
+
+# Interpret and report based on p-value
+p_value <- lung_cancer_smoking_test$p.value
+if (p_value < 0.05) {
+  interpretation <- "There is a significant association between smoking and lung cancer."
+} else {
+  interpretation <- "There is no significant association between smoking and lung cancer."
+}
+
+# Print the interpretation
+print(interpretation)
+
+```
+
+
+```{r collapse=TRUE, warning=FALSE}
+
+print(paste("Contingency Table for Lung_cancer and Yellow_fingers"))
+xtabs(~Lung_cancer + Yellow_fingers, data = data)
+
+```
+
+- In Table 4, highlighting the relationship between lung cancer and yellow fingers, a noticeable trend is observed. Instances of lung cancer (Yes) appear to be more prevalent among individuals with yellow fingers, as evidenced by 163 "Yes" cases, compared to 13 "Yes" cases among those without yellow fingers. This suggests a potential link between the presence of yellow fingers and the likelihood of lung cancer. This feature may prove informative for predicting lung cancer in the dataset, warranting further analysis and consideration in constructing a predictive model.
+
+```{r}
+
+# Perform Chi-square test for Lung_cancer and Yellow_fingers
+lung_cancer_yellow_fingers_test <- chisq.test(xtabs(~Lung_cancer + Yellow_fingers, data = data))
+
+# Output the result
+print(lung_cancer_yellow_fingers_test)
+
+# Interpret and report based on p-value
+p_value <- lung_cancer_yellow_fingers_test$p.value
+interpretation <- ifelse(p_value < 0.05, 
+                         "There is a significant association between yellow fingers and lung cancer.", 
+                         "There is no significant association between yellow fingers and lung cancer.")
+
+# Print the interpretation
+print(interpretation)
+
+```
+
+
+```{r collapse=TRUE, warning=FALSE}
+
+print(paste("Contingency Table for Lung_cancer and Anxiety"))
+xtabs(~Lung_cancer + Anxiety, data = data)
+  
+```
+
+- In Table 5, outlining the relationship between lung cancer and anxiety, a distinct pattern is evident. Individuals reporting anxiety (Yes) appear to have a higher frequency of lung cancer (Yes) compared to those without anxiety (No). Specifically, among individuals without anxiety, there are 27 cases of "No" (indicating no lung cancer) and 12 cases of "Yes" (indicating lung cancer). Conversely, among those with anxiety, there are 128 cases of "No" and 142 cases of "Yes." This suggests a potential association between anxiety and the likelihood of lung cancer, indicating that anxiety could be a relevant factor for predicting lung cancer in this dataset. Further statistical analysis and model construction can help confirm and utilize this association in predictive modeling.
+
+```{r}
+
+# Perform Chi-square test for Lung_cancer and Anxiety
+lung_cancer_anxiety_test <- chisq.test(xtabs(~Lung_cancer + Anxiety, data = data))
+
+# Output the result
+print(lung_cancer_anxiety_test)
+
+# Interpret and report based on p-value
+p_value <- lung_cancer_anxiety_test$p.value
+interpretation <- ifelse(p_value < 0.05, 
+                         "There is a significant association between anxiety and lung cancer.", 
+                         "There is no significant association between anxiety and lung cancer.")
+
+# Print the interpretation
+print(interpretation)
+
+```
+
+
+```{r collapse=TRUE, warning=FALSE}
+
+print(paste("Contingency Table for Lung_cancer and Peer_pressure"))
+xtabs(~Lung_cancer + Peer_pressure, data = data)
+
+```
+
+- In Table 6, illustrating the relationship between lung cancer and peer pressure, a distinct trend is discernible. Individuals who experience peer pressure (Yes) demonstrate a higher frequency of lung cancer (Yes) compared to those who do not succumb to peer pressure (No). Specifically, among individuals unaffected by peer pressure, there are 29 cases of "No" (indicating no lung cancer) and 10 cases of "Yes" (indicating lung cancer). Conversely, among those influenced by peer pressure, there are 125 cases of "No" and 145 cases of "Yes." This suggests a potential link between peer pressure and the likelihood of lung cancer, indicating that peer pressure may be a pertinent factor for predicting lung cancer in this dataset. Further statistical analysis and model construction can help substantiate and leverage this association in predictive modeling.
+
+```{r}
+
+# Perform Chi-square test for Lung_cancer and Peer_pressure
+lung_cancer_peer_pressure_test <- chisq.test(xtabs(~Lung_cancer + Peer_pressure, data = data))
+
+# Output the result
+print(lung_cancer_peer_pressure_test)
+
+# Interpret and report based on p-value
+p_value <- lung_cancer_peer_pressure_test$p.value
+interpretation <- ifelse(p_value < 0.05, 
+                         "There is a significant association between peer pressure and lung cancer.", 
+                         "There is no significant association between peer pressure and lung cancer.")
+
+# Print the interpretation
+print(interpretation)
+
+```
+
+```{r collapse=TRUE, warning=FALSE}
+
+print(paste("Contingency Table for Lung_cancer and Chronic_disease"))
+xtabs(~Lung_cancer + Chronic_disease, data = data)
+
+
+```
+
+- In Table 7, presenting the association between lung cancer and chronic disease, a distinct pattern emerges. Individuals with chronic diseases (Yes) display a higher frequency of lung cancer (Yes) compared to those without chronic diseases (No). Specifically, among individuals without chronic diseases, there are 25 cases of "No" (indicating no lung cancer) and 14 cases of "Yes" (indicating lung cancer). Conversely, among those with chronic diseases, there are 128 cases of "No" and 142 cases of "Yes." This suggests a potential connection between chronic diseases and the likelihood of lung cancer, indicating that chronic diseases may be a relevant factor for predicting lung cancer in this dataset. Further statistical analysis and model construction can help validate and utilize this association in predictive modeling.
+
+
+```{r}
+# Perform Chi-square test for Lung_cancer and Chronic_disease
+lung_cancer_chronic_disease_test <- chisq.test(xtabs(~Lung_cancer + Chronic_disease, data = data))
+
+# Output the result
+print(lung_cancer_chronic_disease_test)
+
+# Interpret and report based on p-value
+p_value <- lung_cancer_chronic_disease_test$p.value
+interpretation <- ifelse(p_value < 0.05, 
+                         "There is a significant association between chronic disease and lung cancer.", 
+                         "There is no significant association between chronic disease and lung cancer.")
+
+# Print the interpretation
+print(interpretation)
+
+```
+
+```{r collapse=TRUE, warning=FALSE}
+
+print(paste("Contingency Table for Lung_cancer and Fatigue"))
+xtabs(~Lung_cancer + Fatigue, data = data)
+
+```
+
+- In Table 8, examining the relationship between lung cancer and fatigue, a noticeable trend emerges. Individuals experiencing fatigue (Yes) demonstrate a substantially higher frequency of lung cancer (Yes) compared to those without fatigue (No). Specifically, among individuals without fatigue, there are 20 cases of "No" (indicating no lung cancer) and 19 cases of "Yes" (indicating lung cancer). In contrast, among those experiencing fatigue, there are 81 cases of "No" and 189 cases of "Yes." This suggests a strong association between fatigue and the likelihood of lung cancer, indicating that fatigue may be a crucial factor for predicting lung cancer in this dataset. Further statistical analysis and model construction can help confirm and leverage this association in predictive modeling.
+
+```{r}
+# Perform Chi-square test for Lung_cancer and Fatigue
+lung_cancer_fatigue_test <- chisq.test(xtabs(~Lung_cancer + Fatigue, data = data))
+
+# Output the result
+print(lung_cancer_fatigue_test)
+
+# Interpret and report based on p-value
+p_value <- lung_cancer_fatigue_test$p.value
+interpretation <- ifelse(p_value < 0.05, 
+                         "There is a significant association between fatigue and lung cancer.", 
+                         "There is no significant association between fatigue and lung cancer.")
+
+# Print the interpretation
+print(interpretation)
+
+```
+
+```{r collapse=TRUE, warning=FALSE}
+
+print(paste("Contingency Table for Lung_cancer and Allergy"))
+xtabs(~Lung_cancer + Allergy, data = data)
+
+```
+
+- In Table 9, depicting the relationship between lung cancer and allergies, a clear pattern is observable. Individuals with allergies (Yes) exhibit a higher frequency of lung cancer (Yes) compared to those without allergies (No). Specifically, among individuals without allergies, there are 34 cases of "No" (indicating no lung cancer) and 5 cases of "Yes" (indicating lung cancer). Conversely, among those with allergies, there are 103 cases of "No" and 167 cases of "Yes." This suggests a potential connection between allergies and the likelihood of lung cancer, indicating that allergies may be a relevant factor for predicting lung cancer in this dataset. Further statistical analysis and model construction can help validate and utilize this association in predictive modeling.
+
+```{r}
+# Perform Chi-square test for Lung_cancer and Allergy
+lung_cancer_allergy_test <- chisq.test(xtabs(~Lung_cancer + Allergy, data = data))
+
+# Output the result
+print(lung_cancer_allergy_test)
+
+# Interpret and report based on p-value
+p_value <- lung_cancer_allergy_test$p.value
+interpretation <- ifelse(p_value < 0.05, 
+                         "There is a significant association between allergies and lung cancer.", 
+                         "There is no significant association between allergies and lung cancer.")
+
+# Print the interpretation
+print(interpretation)
+
+```
+
+```{r collapse=TRUE, warning=FALSE}
+
+print(paste("Contingency Table for Lung_cancer and Wheezing"))
+xtabs(~Lung_cancer + Wheezing, data = data)
+
+```
+
+- In Table 10, outlining the relationship between lung cancer and Wheezing, a discernible trend emerges. Individuals who wheeze demonstrate a higher frequency of lung cancer (Yes) compared to those who do not wheeze. Specifically, among individuals not wheezing, there are 30 cases of "No" (indicating no lung cancer) and 9 cases of "Yes" (indicating lung cancer). In contrast, among those wheezing, there are 107 cases of "No" and 163 cases of "Yes." This suggests a potential association between wheezing and the likelihood of lung cancer, indicating that wheezing may be a relevant factor for predicting lung cancer in this dataset. Further statistical analysis and model construction can help confirm and leverage this association in predictive modeling.
+
+```{r}
+# Perform Chi-square test for Lung_cancer and Wheezing
+lung_cancer_wheezing_test <- chisq.test(xtabs(~Lung_cancer + Wheezing, data = data))
+
+# Output the result
+print(lung_cancer_wheezing_test)
+
+# Interpret and report based on p-value
+p_value <- lung_cancer_wheezing_test$p.value
+interpretation <- ifelse(p_value < 0.05, 
+                         "There is a significant association between wheezing and lung cancer.", 
+                         "There is no significant association between wheezing and lung cancer.")
+
+# Print the interpretation
+print(interpretation)
+
+```
+
+```{r collapse=TRUE, warning=FALSE}
+
+print(paste("Contingency Table for Lung_cancer and Alcohol"))
+xtabs(~Lung_cancer + Alcohol, data = data)
+
+```
+
+- In Table 11, outlining the relationship between lung cancer and alcohol consumption, a discernible trend emerges. Individuals who consume alcohol (Yes) demonstrate a higher frequency of lung cancer (Yes) compared to those who do not consume alcohol (No). Specifically, among individuals not consuming alcohol, there are 32 cases of "No" (indicating no lung cancer) and 7 cases of "Yes" (indicating lung cancer). In contrast, among those consuming alcohol, there are 105 cases of "No" and 165 cases of "Yes." This suggests a potential association between alcohol consumption and the likelihood of lung cancer, indicating that alcohol may be a relevant factor for predicting lung cancer in this dataset. Further statistical analysis and model construction can help confirm and leverage this association in predictive modeling.
+
+```{r}
+# Perform Chi-square test for Lung_cancer and Alcohol consumption
+lung_cancer_alcohol_test <- chisq.test(xtabs(~Lung_cancer + Alcohol, data = data))
+
+# Output the result
+print(lung_cancer_alcohol_test)
+
+# Interpret and report based on p-value
+p_value <- lung_cancer_alcohol_test$p.value
+interpretation <- ifelse(p_value < 0.05, 
+                         "There is a significant association between alcohol consumption and lung cancer.", 
+                         "There is no significant association between alcohol consumption and lung cancer.")
+
+# Print the interpretation
+print(interpretation)
+
+```
+
+```{r collapse=TRUE, warning=FALSE}
+
+print(paste("Contingency Table for Lung_cancer and Coughing"))
+xtabs(~Lung_cancer + Coughing, data = data)
+
+```
+
+- In Table 12, depicting the relationship between lung cancer and coughing, a distinct pattern emerges. Individuals experiencing coughing (Yes) demonstrate a higher frequency of lung cancer (Yes) compared to those without coughing (No). Specifically, among individuals without coughing, there are 29 cases of "No" (indicating no lung cancer) and 10 cases of "Yes" (indicating lung cancer). In contrast, among those experiencing coughing, there are 101 cases of "No" and 169 cases of "Yes." This suggests a potential association between coughing and the likelihood of lung cancer, indicating that coughing may be a relevant factor for predicting lung cancer in this dataset. Further statistical analysis and model construction can help confirm and leverage this association in predictive modeling.
+
+```{r}
+# Perform Chi-square test for Lung_cancer and Coughing
+lung_cancer_coughing_test <- chisq.test(xtabs(~Lung_cancer + Coughing, data = data))
+
+# Output the result
+print(lung_cancer_coughing_test)
+
+# Interpret and report based on p-value
+p_value <- lung_cancer_coughing_test$p.value
+interpretation <- ifelse(p_value < 0.05, 
+                         "There is a significant association between coughing and lung cancer.", 
+                         "There is no significant association between coughing and lung cancer.")
+
+# Print the interpretation
+print(interpretation)
+
+```
+
+```{r collapse=TRUE, warning=FALSE}
+
+print(paste("Contingency Table for Lung_cancer and Shortness_of_breath"))
+xtabs(~Lung_cancer + Shortness_of_breath, data = data)
+
+```
+
+- In Table 13, outlining the relationship between lung cancer and shortness of breath, a noticeable trend emerges. Individuals experiencing shortness of breath (Yes) demonstrate a higher frequency of lung cancer (Yes) compared to those without shortness of breath (No). Specifically, among individuals without shortness of breath, there are 17 cases of "No" (indicating no lung cancer) and 22 cases of "Yes" (indicating lung cancer). In contrast, among those experiencing shortness of breath, there are 94 cases of "No" and 176 cases of "Yes." This implies a potential association between shortness of breath and the likelihood of lung cancer, suggesting that shortness of breath may be a relevant factor for predicting lung cancer in this dataset. Further statistical analysis and model construction can help confirm and leverage this association in predictive modeling.
+
+```{r}
+# Perform Chi-square test for Lung_cancer and Shortness_of_breath
+lung_cancer_shortness_of_breath_test <- chisq.test(xtabs(~Lung_cancer + Shortness_of_breath, data = data))
+
+# Output the result
+print(lung_cancer_shortness_of_breath_test)
+
+# Interpret and report based on p-value
+p_value <- lung_cancer_shortness_of_breath_test$p.value
+interpretation <- ifelse(p_value < 0.05, 
+                         "There is a significant association between shortness of breath and lung cancer.", 
+                         "There is no significant association between shortness of breath and lung cancer.")
+
+# Print the interpretation
+print(interpretation)
+
+```
+
+
+```{r collapse=TRUE, warning=FALSE}
+
+print(paste("Contingency Table for Lung_cancer and Chest_pain"))
+xtabs(~Lung_cancer + Chest_pain, data = data)
+
+
+```
+
+- In Table 14, outlining the relationship between lung cancer and chest pain, a distinct pattern emerges. Individuals experiencing chest pain (Yes) demonstrate a higher frequency of lung cancer (Yes) compared to those without chest pain (No). Specifically, among individuals without chest pain, there are 27 cases of "No" (indicating no lung cancer) and 12 cases of "Yes" (indicating lung cancer). In contrast, among those experiencing chest pain, there are 110 cases of "No" and 160 cases of "Yes." This suggests a potential association between chest pain and the likelihood of lung cancer, indicating that chest pain may be a relevant factor for predicting lung cancer in this dataset. Further statistical analysis and model construction can help confirm and leverage this association in predictive modeling.
+
+```{r}
+# Perform Chi-square test for Lung_cancer and Chest_pain
+lung_cancer_chest_pain_test <- chisq.test(xtabs(~Lung_cancer + Chest_pain, data = data))
+
+# Output the result
+print(lung_cancer_chest_pain_test)
+
+# Interpret and report based on p-value
+p_value <- lung_cancer_chest_pain_test$p.value
+interpretation <- ifelse(p_value < 0.05, 
+                         "There is a significant association between chest pain and lung cancer.", 
+                         "There is no significant association between chest pain and lung cancer.")
+
+# Print the interpretation
+print(interpretation)
+
+```
+**Conclusion: **
+
+The analysis of contingency tables and hypothesis testing provides valuable insights into the relationship between various factors and the presence of lung cancer. Gender does not appear to be a strong indicator of lung cancer, as both methods indicate no significant association. Age stands out as a potential predictor, with both analyses revealing a significant association between certain age groups and lung cancer. Smoking, although showing a trend in contingency analysis, does not exhibit a significant association in hypothesis testing. On the other hand, factors like yellow fingers, anxiety, peer pressure, fatigue, allergies, wheezing, alcohol consumption, coughing, and chest pain consistently show a significant association with lung cancer in both methods. Chronic disease and shortness of breath present discrepancies between the two analyses, warranting further investigation. In summary, while gender and smoking may not strongly predict lung cancer, age and several lifestyle-related factors demonstrate consistent and significant associations, emphasizing their relevance in predictive modeling for lung cancer risk.
+
+
+
+
+
+
+
+
+***
+
+### Encoding the Data
+
+```{r collapse=TRUE, warning=FALSE}
+
+# Function to perform ordinal encoding
+encode_orders <- function(x, levels) {
+  as.integer(factor(x, levels = levels)) - 1
+}
+
+# Columns to encode
+columns_to_encode <- c("Sex","Smoking", "Yellow_fingers", "Anxiety", "Peer_pressure", "Chronic_disease","Fatigue", "Allergy", "Wheezing", "Alcohol", "Coughing","Shortness_of_breath", "Chest_pain", "Lung_cancer")
+
+# Levels for each column
+levels_Sex <- c("F", "M")
+levels_Smoking <- c("Yes", "No")
+levels_Yellow_fingers <- c("No", "Yes")
+levels_Anxiety <- c("No", "Yes")
+levels_Peer_pressure <- c("No", "Yes")
+levels_Chronic_disease <- c("No", "Yes")
+levels_Fatigue <- c("No", "Yes")
+levels_Allergy <- c("No", "Yes")
+levels_Wheezing <- c("No", "Yes")
+levels_Alcohol <- c("No", "Yes")
+levels_Coughing <- c("No", "Yes")
+levels_Shortness_of_breath <- c("No", "Yes")
+levels_Chest_pain <- c("No", "Yes")
+levels_Lung_cancer <- c("No", "Yes")
+
+# Perform ordinal encoding
+encoded_data <- data
+for (col in columns_to_encode) {
+  if (col == "Sex") {
+    encoded_data[[col]] <- encode_orders(encoded_data[[col]], levels_Sex)
+  } else if (col == "Smoking") {
+    encoded_data[[col]] <- encode_orders(encoded_data[[col]], levels_Smoking)
+  } else if (col == "Yellow_fingers") {
+    encoded_data[[col]] <- encode_orders(encoded_data[[col]], levels_Yellow_fingers)
+  } else if (col == "Anxiety") {
+    encoded_data[[col]] <- encode_orders(encoded_data[[col]], levels_Anxiety)
+  } else if (col == "Peer_pressure") {
+    encoded_data[[col]] <- encode_orders(encoded_data[[col]], levels_Peer_pressure)
+  } else if (col == "Chronic_disease") {
+    encoded_data[[col]] <- encode_orders(encoded_data[[col]], levels_Chronic_disease)
+  } else if (col == "Fatigue") {
+    encoded_data[[col]] <- encode_orders(encoded_data[[col]], levels_Fatigue)
+  } else if (col == "Allergy") {
+    encoded_data[[col]] <- encode_orders(encoded_data[[col]], levels_Allergy)
+  } else if (col == "Wheezing") {
+    encoded_data[[col]] <- encode_orders(encoded_data[[col]], levels_Wheezing)
+  } else if (col == "Alcohol") {
+    encoded_data[[col]] <- encode_orders(encoded_data[[col]], levels_Alcohol)
+  } else if (col == "Coughing") {
+    encoded_data[[col]] <- encode_orders(encoded_data[[col]], levels_Coughing)
+  } else if (col == "Shortness_of_breath") {
+    encoded_data[[col]] <- encode_orders(encoded_data[[col]], levels_Shortness_of_breath)
+  } else if (col == "Chest_pain") {
+    encoded_data[[col]] <- encode_orders(encoded_data[[col]], levels_Chest_pain)
+  } else if (col == "Lung_cancer") {
+    encoded_data[[col]] <- encode_orders(encoded_data[[col]], levels_Lung_cancer)
+  }
+}
+
+head(encoded_data)
+
+```
+
+***
+
+### Splitting the Data
+
+```{r collapse=TRUE, warning=FALSE}
+
+set.seed(23)
+library(caret)
+library(lattice)
+
+
+# Splitting the dataset (80% training, 20% test)
+trainIndex <- createDataPartition(encoded_data$Lung_cancer, p = 0.8, list = FALSE)
+
+# Create training and test sets
+trainingSet <- encoded_data[trainIndex, ]
+testSet <- encoded_data[-trainIndex, ]
+
+# Convert categorical factors to numeric
+data$Sex <- as.numeric(as.factor(data$Sex))
+data$Age <- as.numeric(data$Age)
+data$Smoking <- as.numeric(as.factor(data$Smoking))
+data$Yellow_fingers <- as.numeric(as.factor(data$Yellow_fingers))
+data$Anxiety <- as.numeric(as.factor(data$Anxiety))
+data$Peer_pressure <- as.numeric(as.factor(data$Peer_pressure))
+data$Chronic_disease <- as.numeric(as.factor(data$Chronic_disease))
+data$Fatigue <- as.numeric(as.factor(data$Fatigue))
+data$Allergy <- as.numeric(as.factor(data$Allergy))
+data$Wheezing <- as.numeric(as.factor(data$Wheezing))
+data$Alcohol <- as.numeric(as.factor(data$Alcohol))
+data$Coughing <- as.numeric(as.factor(data$Coughing))
+data$Shortness_of_breath <- as.numeric(as.factor(data$Shortness_of_breath))
+data$Chest_pain <- as.numeric(as.factor(data$Chest_pain))
+data$Lung_cancer <- as.numeric(as.factor(data$Lung_cancer))
+
+```
+
+
+***
+
+### Lasso Regression
+
+*To assess the significance of the various features in the dataset we will be performing Lasso regression. Lasso regression is useful for feature selection because it can shrink the coefficients of less important features to zero, effectively removing them from the model.*
+
+```{r}
+
+library(glmnet)
+# Assuming encoded_data is your final data set
+# Extract the predictors and the response variable
+X <- as.matrix(encoded_data[, -which(names(encoded_data) == "Lung_cancer")]) # all columns except Lung_cancer
+y <- encoded_data$Lung_cancer
+
+# Scale the predictors
+X_scaled <- scale(X)
+set.seed(42) # for reproducibility
+cv_lasso <- cv.glmnet(X_scaled, y, alpha = 1, family = "binomial") # Use 'binomial' for classification tasks
+# Best lambda
+best_lambda <- cv_lasso$lambda.min
+lasso_model <- glmnet(X_scaled, y, alpha = 1, lambda = best_lambda, family = "binomial")
+coef(lasso_model) # this will give you the coefficients of the model
+
+```
+The Lasso regression output indicates that the 'Sex' and 'Shortness_of_breath' variables are not contributing to the model, as their coefficients are reduced to zero. In contrast, features like 'Yellow_fingers', 'Chronic_disease', 'Fatigue', 'Allergy', and 'Alcohol' have relatively higher coefficients, suggesting they are more significant in predicting the response variable in this model.
+
+
+***
+###Random Forest
+
+*To complement LASSO regression, Random forests are useful for getting a rough idea of feature importance. This method involves fitting a Random Forest model to the data and then examining the importance of each feature. The importance is usually measured in terms of the mean decrease in accuracy or the mean decrease in Gini impurity when a feature is used in trees.*
+
+
+```{r collapse=TRUE, warning=FALSE}
+
+library(randomForest)
+
+
+X <- encoded_data[, -which(names(encoded_data) == "Lung_cancer")]  # Extracting predictor variables
+y <- encoded_data$Lung_cancer                                      # Extracting the response variable
+
+# Fit the Random Forest Model
+rf_model <- randomForest(x = X, y = y, ntree = 500, importance = TRUE) 
+
+# Extract Feature Importance
+importance <- importance(rf_model) 
+print(importance)                 
+
+# Visualize Feature Importance
+varImpPlot(rf_model)                
+
+```
+The Random Forest feature importance metrics reveal that "Yellow_fingers," "Allergy," and "Alcohol" are the most significant predictors for the model, as they have the highest percentage increases in Mean Squared Error when their values are altered. "Age" stands out for contributing to the purity of the model's nodes, indicating its importance in the dataset. On the other hand, "Chest_pain" and "Shortness_of_breath" are among the least important features, suggesting they have a minimal impact on the model’s predictions. These findings highlight the variables that are most and least influential in the Random Forest model for the given dataset.
+
+***
+
+### Correlation
+
+*To make a final decision on which features to select, we will check for correlation between the selected features. If two features are highly correlated, we will be including only one to avoid redundancy.*
+
+```{r collapse=TRUE, warning=FALSE}
+correlation_matrix <- cor(encoded_data[, -ncol(encoded_data)])
+
+# View the correlation matrix
+print(correlation_matrix)
+
+library(ggplot2)
+library(reshape2)
+
+# Melt the correlation matrix for visualization
+melted_correlation_matrix <- melt(correlation_matrix)
+
+# Use ggplot2 to create the heatmap
+ggplot(data = melted_correlation_matrix, aes(Var1, Var2, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2(midpoint = 0, limit = c(-1,1), space = "Lab", name="Pearson\nCorrelation") +
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, size = 12, hjust = 1),
+        axis.text.y = element_text(size = 12)) +
+  coord_fixed()
+
+```
+
+In the correlation analysis of the dataset, several pairs of features exhibit notably strong correlations. Fatigue and Shortness_of_breath show the most substantial positive correlation with a coefficient of 0.442, indicating that these two variables tend to increase together and may provide similar information. Another pair, Yellow_fingers and Anxiety, have a correlation of 0.566, suggesting a significant positive relationship where instances of one are likely to be accompanied by increases in the other. Additionally, Allergy and Alcohol are positively correlated with a coefficient of 0.344, implying a tendency to move in tandem within the dataset. These strong correlations suggest that these features are closely linked, and when considering them for predictive modeling, it's important to assess the potential impact of multicollinearity on the model's performance and interpretability.
+
+***
+
+### First Cross Validation
+
+```{r collapse=TRUE, warning=FALSE}
+# Load the necessary library
+library(caret)
+
+# Define the control method for cross-validation
+control <- trainControl(method = "cv", number = 10)
+
+# Formula for the logistic regression model
+formula <- Lung_cancer ~ Sex + Age + Smoking + Yellow_fingers + Anxiety + Peer_pressure + Chronic_disease + 
+  Fatigue + Allergy + Wheezing + Alcohol + Coughing + Shortness_of_breath + Chest_pain
+
+# Train the model using cross-validation
+set.seed(123) 
+cv_model <- train(formula, data = trainingSet, method = "glm", family = "binomial", trControl = control)
+
+# Summary of the cross-validation results
+print(cv_model)
+
+
+```
+
+*The cross-validation results, with an R-squared of 0.3689119, indicate that the model has a moderate level of predictive power, successfully explaining approximately 36.89% of the variance in the target variable.*
+
+***
+
+> # **4- Data Preprocessing & Feature Engineering **
+
+The data preprocessing and feature engineering process for the lung cancer dataset involved strategic modifications to enhance data quality and relevance for subsequent analysis. The original dataset comprised 14 features, encompassing diverse factors such as demographics, smoking habits, health indicators, and symptoms related to lung cancer. Logistic regression analysis and cross validation approach were employed to identify the most relevant features based on their P-values.
+
+According to the LASSO regression and Random Forest summaries, features such as 'Smoking,' 'Yellow_fingers,' 'Anxiety,' 'Wheezing,' 'Coughing,' 'Chest_pain,' 'Peer_pressure,' 'Chronic_disease,' 'Fatigue,' 'Allergy,' and 'Alcohol' were found to be statistically significant with non-zero coefficients, indicating they have a significant contribution to the model. Conversely, features like 'Sex,' and 'Shortness_of_breath,' have coefficients reduced to zero, suggesting they are less important for the model and could potentially be excluded from further analysis.
+
+Furthermore, based on the correlation matrix Fatigue and Shortness_of_breath exhibit the strongest correlation, suggesting redundancy. It would be prudent to retain only the one which has a greater impact on model accuracy. Similarly, Yellow_fingers and Anxiety show a substantial correlation; if their contributions to the predictive power of the model are unequal, we must exclude the less significant one. Alcohol is notably correlated with both Sex and Allergy; given that Alcohol is a prominent feature within the data. Lastly, the correlation between Wheezing and Coughing necessitates an assessment of their individual importance to determine if one should be discarded in favor of the other to enhance model performance.
+
+
+After preprocessing, the refined dataset includes nine relevant variables: 
+-Smoking
+-Yellow fingers
+-Coughing
+-Chest pain
+-Peer pressure
+-Chronic disease
+-Fatigue
+-Allergy
+-Alcohol
+
+These variables are now poised for further analysis or model construction, allowing for a focused exploration of the relationships and patterns associated with lung cancer in the dataset.
+
+
+
+
+### Removal of Insignificant features. 
+
+```{r collapse=TRUE, warning=FALSE}
+
+# Specify the columns to be removed
+
+columns_to_remove <- c('Age', 'Anxiety','Wheezing', 'Sex','Shortness_of_breath')
+
+# Remove specified columns and store in new_data
+newdata <- data[, !colnames(data) %in% columns_to_remove]
+
+head(newdata)
+
+```
+
+***
+
+### Second Cross Validation
+
+
+```{r collapse=TRUE, warning=FALSE}
+
+# Define the control method for cross-validation
+control2 <- trainControl(method = "cv", number = 10)
+
+# Formula for the logistic regression model
+formula2 <- Lung_cancer ~ Smoking + Yellow_fingers + Peer_pressure + Chronic_disease + Fatigue + Allergy + Alcohol  + Coughing + Chest_pain
+
+# Train the model using cross-validation
+set.seed(21) # For reproducibility
+cv_model2 <- train(formula2, data = trainingSet, method = "glm", family = "binomial", trControl = control)
+
+# Summary of the cross-validation results
+print(cv_model2)
+
+```
+
+*These results imply that by focusing on the more significant variables, the model has become more effective in predicting the target variable, as evidenced by the higher R-squared and lower error metrics. This highlights the importance of feature selection in building a more efficient and accurate predictive model.*
+
+***
+
+> # **5- Model Development **
+
+### Splitting the Data
+
+
+```{r collapse=TRUE, warning=FALSE}
+
+set.seed(23)
+training_indices <- sample(1:nrow(newdata), 0.7 * nrow(newdata)) 
+#We chose 0.7 since we found that a splitting of 0.8 is overfitting our dataset(small n)
+
+training_data <- newdata[training_indices, ]
+testing_data <- newdata[-training_indices, ]
+
+# Convert 'Lung_cancer' to a factor if it is not already
+training_data$Lung_cancer <- as.factor(training_data$Lung_cancer)
+
+# Convert data to matrix format
+X_train <- model.matrix(Lung_cancer ~ ., data = training_data)[, -1]  # Exclude the intercept column
+y_train <- as.numeric(training_data$Lung_cancer) - 1  
+
+```
+
+***
+
+## **Tree-based models** 
+***
+### Performing Unpruned Tree
+
+```{r collapse=TRUE, warning=FALSE}
+
+# Load necessary libraries
+library(rpart)
+library(rpart.plot)
+library(pROC)
+
+# Create an unpruned decision tree model
+unpruned_tree <- rpart(Lung_cancer ~ ., data = training_data, method = "class")
+
+# Visualize the unpruned tree
+rpart.plot(unpruned_tree, type = 4, extra = 2)
+
+# Predict probabilities on the test set for ROC analysis
+predictions_prob <- predict(unpruned_tree, testing_data, type = "prob")[, 2]
+
+# Create ROC curve
+roc_obj <- roc(testing_data$Lung_cancer, predictions_prob)
+
+# Plot ROC curve
+plot(roc_obj, main = "ROC Curve for Unpruned Decision Tree",  col = "blue")
+
+# Calculating AUC
+auc_value <- auc(roc_obj)
+print(paste("AUC:", auc_value))
+
+``` 
+
+
+*The decision tree suggests that allergy, yellow fingers, alcohol consumption, and chronic disease are key predictors in the model. The ROC curve with an AUC of 0.782 indicates that the model has a good but not excellent ability to distinguish between classes, and there may be potential to improve the model's performance.*
+
+```{r collapse=TRUE, warning=FALSE}
+
+# Load necessary library
+library(rpart)
+library(rpart.plot)
+
+chosen_cp <- 0.0575
+
+full_tree_model <- rpart(Lung_cancer ~ ., data = training_data, method = "class")
+
+# Prune the tree with the chosen cp value
+pruned_tree_model <- prune(full_tree_model, cp = chosen_cp)
+
+# Visualize the pruned tree
+rpart.plot(pruned_tree_model, type = 4, extra = 2)
+
+# Predict on test set
+pruned_preds <- predict(pruned_tree_model, testing_data, type = "prob")[, 2]
+
+# ROC curve
+roc_pruned <- roc(testing_data$Lung_cancer, pruned_preds)
+# Plot ROC curve
+plot(roc_pruned, main = "ROC Curve for Pruned Decision Tree",  col = "red")
+
+# Calculating AUC
+auc_pruned_value <- auc(roc_pruned)
+print(paste("AUC:", auc_pruned_value))
+
+```
+
+*The pruned decision tree suggests that allergy, yellow fingers and alcohol consumption are key predictors in the model. The ROC curve with an AUC of 0.782 indicates that the pruning process did not significantly impact the model's performance on the test data. This can happen when the initial decision tree (unpruned tree) did not highly overfit to the training data.*
+
+***
+
+### Performing Boosting
+
+```{r collapse=TRUE, warning=FALSE}
+library(xgboost)
+xgb_model <- xgboost(data = X_train, label = y_train, nrounds = 500, objective = "binary:logistic", verbose = 0)
+
+# Make predictions on the testing data
+X_test <- model.matrix(Lung_cancer ~ ., data = testing_data)[, -1]
+predictions <- predict(xgb_model, newdata = X_test)
+
+# Convert predicted probabilities to class labels
+predicted_labels <- ifelse(predictions > 0.5, "Pass", "Fail")
+
+# Print confusion matrix and accuracy
+conf_matrix <- table(predicted_labels, testing_data$Lung_cancer)
+accuracy <- sum(diag(conf_matrix)) / sum(conf_matrix)
+cat("Confusion Matrix:\n")
+print(conf_matrix)
+cat("Accuracy:", accuracy, "\n")
+
+``` 
+
+#### Performing ROC Curves for boosting
+
+```{r collapse=TRUE, warning=FALSE}
+
+library(pROC)
+
+# Making predictions on the test set using XGBoost model
+
+xgb_predictions <- predict(xgb_model, X_test)
+
+# Create a ROC curve
+xgb_roc <- roc(testing_data$Lung_cancer, xgb_predictions)
+
+# Plot the ROC curve
+plot(xgb_roc, main = "ROC Curve for Boosting Model", col = "maroon")
+
+print(auc(xgb_roc))
+
+```
+
+
+*The ROC curve suggests that the boosting model has good predictive performance with a high area under the curve (AUC) of 0.8811 and an accuracy rate of 90.32%.*
+
+***
+
+### Random Forest 
+
+```{r collapse=TRUE, warning=FALSE}
+# Load the necessary library
+library(randomForest)
+
+# Running Random Forest model
+rf_model <- randomForest(Lung_cancer ~ ., data = training_data, ntree = 500)
+
+# Make predictions on the testing data
+predictions <- predict(rf_model, newdata = testing_data)
+
+# Evaluating model performance
+conf_matrix <- table(predictions, testing_data$Lung_cancer)
+accuracy <- sum(diag(conf_matrix)) / sum(conf_matrix)
+print(conf_matrix)
+cat("Accuracy:", accuracy, "\n")
+
+``` 
+
+#### Performing ROC Curve for Random Forest:
+
+```{r collapse=TRUE, warning=FALSE}
+# Load the pROC library
+library(pROC)
+
+# Making predictions on the test set using Random Forest model
+rf_predictions <- predict(rf_model, newdata = testing_data, type = "prob")[,2]
+
+# Create a ROC curve
+rf_roc <- roc(testing_data$Lung_cancer, rf_predictions)
+
+# Plot the ROC curve
+plot(rf_roc, main = "ROC Curve for Random Forest Model",col = "darkgreen")
+
+print(auc(rf_roc))
+
+```
+
+*The ROC curve for the Random Forest model indicates a strong performance with an accuracy of 0.9139 and an aread under the curve of 0.8839.*
+
+**Conclusion: **
+
+In general, the provided models exhibit varying levels of predictive performance. The random forest model stands out with a high AUC of 0.8839 and an accuracy of 91.39%, indicating strong predictive capabilities. The Boosting model also performs well with an accuracy of 90.32% and an AUC of 0.8811. However, the decision tree model, while identifying important predictors, has a slightly lower AUC of 0.782, suggesting room for improvement. Overall, model choice should be based on specific requirements and the desired balance between accuracy and interpretability.
+
+***
+
+## **Performing SVM**
+
+### Linear Kernel
+
+```{r collapse=TRUE, warning=FALSE}
+library(e1071)
+
+response_variable <- 'Lung_cancer'
+
+set.seed(123)  
+indices <- sample(1:nrow(newdata), 0.8 * nrow(newdata))
+training_data <- newdata[indices, ]
+testing_data <- newdata[-indices, ]
+
+# Linear Kernel with different cost values
+cost_values <- c(0.1, 1, 10)
+for (cost in cost_values) {
+  training_data$Lung_cancer <- as.factor(training_data$Lung_cancer)
+  testing_data$Lung_cancer <- as.factor(testing_data$Lung_cancer)
+
+  svm_linear <- svm(as.formula(paste(response_variable, "~ .")), data = training_data, type = "C-classification", kernel = "linear", cost = cost)
+  predictions <- predict(svm_linear, testing_data)
+  accuracy <- sum(predictions == testing_data$Lung_cancer) / nrow(testing_data)
+  cat("Linear Kernel - Cost:", cost, "Accuracy:", accuracy, "\n")
+}
+
+
+```
+
+*Increasing the cost parameter in a linear kernel SVM model from 0.1 to 1 significantly improves the accuracy from about 90.32% to 95.16%. However, further increasing the cost to 10 does not improve the accuracy, indicating that a cost of 1 is optimal within the tested range for this particular model setup.*
+
+
+### Polynomial kernel 
+
+```{r collapse=TRUE, warning=FALSE}
+
+# Polynomial Kernel with different degrees and cost values
+degree_values <- c(2, 3, 4)
+for (degree in degree_values) {
+  for (cost in cost_values) {
+    svm_poly <- svm(Lung_cancer ~ ., data = training_data, type = "C-classification", kernel = "polynomial", degree = degree, cost = cost)
+    predictions <- predict(svm_poly, testing_data)
+    accuracy <- sum(predictions == testing_data$Lung_cancer) / nrow(testing_data)
+    cat("Polynomial Kernel - Degree:", degree, "Cost:", cost, "Accuracy:", accuracy, "\n")
+  }
+}
+
+```
+
+*In comparing the performance of SVM models with polynomial kernels of varying degrees and cost parameters, the highest accuracy is achieved with a degree of 3 and a cost of 1, with an accuracy of 93.54%. Also, a degree of 3 or 4 and a cost of 10, both yield an accuracy of approximately 91.19%. Increasing the cost parameter generally improves accuracy, indicating a better fitting model at the expense of potential overfitting.*
+
+### Radial kernel
+
+```{r collapse=TRUE, warning=FALSE}
+
+# RBF Kernel with different gamma and cost values
+gamma_values <- c(0.1, 0.5, 1)
+for (gamma in gamma_values) {
+  for (cost in cost_values) {
+    svm_rbf <- svm(Lung_cancer ~ ., data = training_data, type = "C-classification", kernel = "radial", gamma = gamma, cost = cost)
+    predictions <- predict(svm_rbf, testing_data)
+    accuracy <- sum(predictions == testing_data$Lung_cancer) / nrow(testing_data)
+    cat("RBF Kernel - Gamma:", gamma, "Cost:", cost, "Accuracy:", accuracy, "\n")
+  }
+}
+
+```
+
+*Increasing the cost parameter in an RBF kernel SVM generally improves accuracy, as seen with the accuracy rising from 83.87% at a cost of 0.1 to a plateau of 91.93% at a cost of 1 or higher, regardless of gamma values in this range. The gamma parameter does not significantly affect accuracy in this instance when the cost is sufficiently high.*
+
+### Sigmoid kernel
+
+```{r collapse=TRUE, warning=FALSE}
+
+# Sigmoid Kernel with different cost values
+for (cost in cost_values) {
+  svm_sigmoid <- svm(Lung_cancer ~ ., data = training_data, type = "C-classification", kernel = "sigmoid", cost = cost)
+  predictions <- predict(svm_sigmoid, testing_data)
+  accuracy <- sum(predictions == testing_data$Lung_cancer) / nrow(testing_data)
+  cat("Sigmoid Kernel - Cost:", cost, "Accuracy:", accuracy, "\n")
+}
+
+```
+
+*For the SVM with a sigmoid kernel, increasing the cost parameter (from 0.1 to 10) improves accuracy from 83.87% to 90.32%.*
+
+
+**Conclusion: **
+
+For the SVM with various kernels, increasing the cost parameter generally leads to higher accuracy. The linear kernel achieves the highest accuracy of 95.16% at a cost of 1 or higher. Polynomial kernels show varied performance with increasing degrees and cost, but the highest accuracy for a degree-2 polynomial is 90.32% at a cost of 10, for degree-3 it's 91.93% at a cost of 10, and for degree-4, it also reaches 91.93% at a cost of 10. The RBF kernel shows a consistent high accuracy of 91.93% at a cost of 1 or higher, across different gamma settings. The sigmoid kernel's accuracy peaks at 90.32% with a cost of 10. The results suggest that the linear and RBF kernels with higher cost parameters are most effective for this SVM application.
+
+***
+
+## **Principle Component Analysis**
+
+```{r collapse=TRUE, warning=FALSE}
+
+# Perform PCA on the scaled data
+data_scaled <- scale(newdata)  
+pca_result <- prcomp(data_scaled, center = TRUE, scale. = TRUE)
+
+# Cumulative proportion of variance
+cumulative_variance <- cumsum(pca_result$sdev^2) / sum(pca_result$sdev^2)
+
+# Plot cumulative proportion of variance
+plot(cumulative_variance, type = "b", xlab = "Number of Components", ylab = "Cumulative Proportion of Variance", main = "Cumulative Variance Explained by PCA Components")
+
+abline(h = 0.9, col = "red", lty = 2) # Threshold
+
+```
+
+*The graph depicts the cumulative variance explained by principal components in a PCA analysis. It shows that as more components are included, the proportion of total variance explained by the model increases. With each additional component, there's a diminishing return on the amount of new variance explained. The red dashed line at 0.9 indicates a conventional cutoff where 90% of the variance should be explained. This graph suggests that seven components are sufficient to explain slightly over 90% of the variance, providing a balance between model simplicity and explained variance. After the seventh component, additional components contribute only marginally to increasing the explained variance, indicating that they may be capturing noise rather than informative variance.*
+
+***
+
+## **Clustering** 
+
+### K-Means Clustering
+
+
+```{r collapse=TRUE, warning=FALSE}
+library(stats)
+library(ggplot2)
+
+# Perform PCA on the scaled data
+data_scaled <- scale(newdata)  
+pca_result <- prcomp(data_scaled, center = TRUE, scale. = TRUE)
+
+# Cumulative proportion of variance
+cumulative_variance <- cumsum(pca_result$sdev^2) / sum(pca_result$sdev^2)
+
+# Plot cumulative proportion of variance
+plot(cumulative_variance, type = "b", xlab = "Number of Components", ylab = "Cumulative Proportion of Variance", main = "Cumulative Variance Explained by PCA Components")
+
+abline(h = 0.9, col = "red", lty = 2) # Threshold
+
+
+```
+
+*Based on the PCA and K-means clustering plot, it is evident that the data has been dimensionally reduced to two principal components, namely PC1 and PC2. Furthermore, when applying K-means clustering with k=3, distinct clusters are visually represented by different colors, specifically red, green, and blue. This clustering outcome indicates a meaningful separation between the groups along the principal components, which likely correspond to the directions of highest variance within the dataset.*
+
+### Hierarchical Clustering
+
+
+```{r collapse=TRUE, warning=FALSE}
+
+# Hierarchical Clustering with standard scaling
+data_scaled <- scale(newdata) 
+
+# Create a distance matrix using Euclidean distance
+dist_matrix <- dist(data_scaled, method = "euclidean")
+
+# Perform hierarchical clustering using Ward's method
+hc <- hclust(dist_matrix, method = "ward.D2")
+
+# Plot the dendrogram
+plot(hc, cex = 0.1, main = "Hierarchical Clustering Dendrogram")
+
+# Reproducibility for sampling
+set.seed(123)
+
+# Sample the entire dataset 
+data_sample <- newdata[sample(nrow(newdata), size = 309), ]
+
+# Plot the original dendrogram with a horizontal cut-off line
+plot(hc, cex = 0.1, main = "Dendrogram with Cut-off Line")
+abline(h = 17, col = "maroon")  # Add a cut-off line at height 15
+
+# Plot the dendrogram without labels and with colored rectangles to represent clusters
+plot(hc, hang = -1, labels = FALSE, main = "Dendrogram with Cluster Rectangles")
+rect.hclust(hc, k = 5, border = 2:6)  # Add colored borders to indicate the 5 clusters
+
+```
+
+*The hierarchical clustering dendrograms represent a visual taxonomy of the data stratification, with the Ward's method algorithm delineating the natural subdivisions within the multidimensional dataset. The dendrogram without the cut-off line provides a macroscopic overview of the clustering hierarchy, indicating the agglomerative steps of the clustering algorithm.*
+
+*The dendrogram with the cut-off line posits an arbitrary threshold for cluster delineation, intersecting the dendrogram at a specific linkage distance. This horizontal line is set at a linkage distance that corresponds to a significant increase in heterogeneity, inferred from the elongated vertical lines preceding this intersection. It suggests a granularity level where clusters are distinctly separate, guiding the selection of a cluster count for optimal data segmentation.*
+
+*The dendrogram with colored rectangles encapsulates the data points into five discrete clusters, with the color boundaries defined by the algorithm's calculated linkage distance. These clusters represent data partitions with the most homogeneity within and the highest heterogeneity between them, as evidenced by the clustering algorithm's linkage criterion. The spatial configuration of these clusters along the vertical axis offers insights into the internal cohesion and external isolation of the clusters, thus providing a quantifiable stratification of the data space based on the variance within and across the clusters. This graphical representation is a powerful tool for identifying underlying patterns in high-dimensional spaces, facilitating the extraction of interpretable and actionable insights from complex datasets.*
+
+***
+
+> # **6- Hyperparameter Tuning** 
+
+### Random Forest Tuning
+
+```{r collapse=TRUE, warning=FALSE}
+
+# Convert 'Lung_cancer' to a factor
+trainingSet$Lung_cancer <- as.factor(trainingSet$Lung_cancer)
+
+# Define the control parameters for the tuning process
+control <- trainControl(method = "cv", number = 10, search = "grid")
+
+# Define the grid for tuning hyperparameters for Random Forest
+tuneGrid <- expand.grid(.mtry = c(2, 3, 4, 5))
+
+# Fit the Random Forest model
+rf_model <- train(Lung_cancer ~ ., data = trainingSet, method = "rf",
+                 trControl = control,
+                 tuneGrid = tuneGrid,
+                 metric = "Accuracy")
+
+# Print the results
+print(rf_model)
+
+```
+
+*It can be inferred that the best hyperparameter setting for the mtry parameter is 4, as it yielded the highest cross-validated accuracy of approximately 91.08% on a dataset with 248 samples and 14 predictors. This model, optimized for binary classification into two classes ('0' and '1'), demonstrates good predictive performance without any prior data preprocessing.*
+
+
+### SVM Tuning
+
+```{r collapse=TRUE, warning=FALSE}
+
+# Define the grid for tuning hyperparameters for SVM
+# Adjusting cost and gamma values for radial basis function kernel
+tuneGrid <- expand.grid(.C = 10^seq(-2, 2, by = 1),
+                        .sigma = 10^seq(-2, 2, by = 1))
+
+# Fit the SVM model
+svm_model <- train(Lung_cancer ~ ., data = trainingSet, method = "svmRadial",
+                   trControl = control,
+                   tuneGrid = tuneGrid,
+                   preProcess = c("center", "scale"),
+                   metric = "Accuracy")
+
+# Print the results
+print(svm_model)
+```
+
+*From the SVM model's output, it's inferred that the optimal performance was achieved with sigma = 0.1 and C = 100, delivering an accuracy of approximately 91.91%. This tuning was determined through a 10-fold cross-validation process on a dataset with 248 samples and 14 predictors. The model, which underwent pre-processing steps of centering and scaling, demonstrated effective predictive capabilities for a binary classification task with two classes ('0' and '1'). The Kappa statistic of around 51.87% for the optimal model indicates a substantial agreement beyond chance.*
+
+### Cluster Tuning
+
+This process involves evaluating the model performance for different values of k and selecting the one that offers the best performance based on certain criteria. In our case we chose to evaluate them based on the silhouette score.
+
+It's important to note that clustering is an unsupervised learning technique. Unlike supervised learning models (like Random Forest or SVM), there's no 'accuracy' metric since there are no true labels to compare against.
+
+Instead, we rely on metrics that measure the cohesion and separation of the clusters.
+
+```{r}
+library(factoextra)
+library(cluster)
+
+# Find the optimal number of clusters using the Elbow method and silhouette method
+
+fviz_nbclust(data_scaled, kmeans, method = "wss") + geom_vline(xintercept = 4, linetype = 2)
+fviz_nbclust(data_scaled, kmeans, method = "silhouette")
+
+sil <- silhouette(kmeans(data_scaled, 3)$cluster, dist(data_scaled))
+summary(sil)
+```
+
+*The Elbow Method plot suggests that k=4 is the optimal number of clusters where the rate of decrease in within-cluster variation slows down significantly, indicating a good balance between the number of clusters and the compactness of the clusters. *
+
+*The Silhouette plot shows that k=10 maximizes the average silhouette width, suggesting strong separation and well-defined clusters. The optimal number of clusters might be k=4 based on the Elbow method or k=10 based on the Silhouette method, depending on the specific context and goals of the clustering.*
+
+
+**Conclusion: **
+
+In conclusion, the hyperparameter tuning for the Random Forest model identified mtry = 4 as the optimal parameter with the highest accuracy, reflecting a well-fitted model for the given dataset. For the SVM model, the radial kernel with sigma = 0.1 and C = 100 was deemed optimal, demonstrating strong classification performance. The clustering analysis, guided by the Elbow and Silhouette methods, suggested that either 2 or 4 clusters may be most appropriate for the data, with each method favoring a different number of clusters. The final decision on the number of clusters would benefit from domain knowledge and the specific analytical objectives.
+
+***
+
+> # **7- Results Interpretation**
+
+The project aimed to harness machine learning for diagnosing lung cancer, a pursuit where accuracy in this problem the balance between recall and accuracy is crucial; however recall is often prioritized because the cost of missing a true positive can be very high potentially resulting in a missed opportunity for early diagnosis and therefore treatment. Taking into account that high recall should not come at the expense of very low precision, as this can lead to many false positives, causing unnecessary stress for patients and potentially leading to invasive and costly follow-up tests. In addition, other metrics like the Area Under the Receiver Operating Characteristic (ROC) Curve (AUC-ROC) and the Area Under the Precision-Recall Curve (AUC-PR) are also used to evaluate model performance in such contexts, as they consider both false positive and false negative rates. **The endeavor led to the exploration of various modeling techniques, each with its revelations and inherent complexities.**
+
+**Logistic Regression:**
+The logistic regression model served as a foundational analytical tool, revealing significant associations between certain symptoms and lung cancer. Notably, it highlighted the importance of symptoms like 'Yellow_fingers' and 'Chronic_disease'. However, the model's assumption of linearity between predictors.  Addressing this, careful feature selection and model validation were employed to mitigate potential biases.
+
+**Random Forest:**
+The Random Forest model offered a more dynamic perspective, showcasing an accuracy of approximately 86%. Its strength lay in uncovering non-linear relationships and intricate variable interactions. The challenge of overfitting, often prevalent in such complex models, was countered through meticulous hyperparameter tuning, specifically of the `mtry` parameter. Despite its robust performance, Random Forest's ensemble nature posed interpretability hurdles, a common trade-off in advanced modeling techniques.
+
+**Support Vector Machines (SVM):**
+SVMs stood out for their strong outputs, particularly when utilizing the radial basis function kernel, suggesting the presence of a non-linear class boundary. Achieving high accuracy, SVMs confirmed their potential in high-dimensional spaces. However, the complexity of kernel selection and parameter tuning presented considerable challenges. The absence of direct probability estimates from SVMs also restricted their clinical applicability.
+
+**Clustering:**
+Clustering techniques, particularly K-Means, were instrumental in unveiling latent groupings within the dataset, potentially mirroring diverse lung cancer types or stages. The unsupervised nature of clustering brought forth insights that supervised methods might overlook. The challenge here was the subjective determination of cluster numbers, a decision with profound implications on the analysis.
+
+**Principal Component Analysis (PCA) and K-Means Clustering:**
+PCA efficiently condensed the dataset, bringing the most influential features to the fore and potentially minimizing noise. When combined with K-Means, PCA transformed the data into a more tractable form for clustering. The primary challenge was the assumption that the most variance equates to the most relevance, which isn't always clinically valid. Additionally, the transformed features often lost their original interpretability.
+
+**Boosting:**
+Boosting emerged as the most accurate technique, underscoring its efficacy in creating a strong learner from weak ones. Nevertheless, its sensitivity to outliers and noise, as well as the necessity for precise parameter tuning, required a careful approach to model training.
+
+**General Challenges:**
+Across all models, ensuring data quality was paramount, as the input data's integrity directly affected the outcomes. The balance between model interpretability and performance was also a constant consideration, especially in a clinical setting where understanding the rationale behind predictions is essential.
+
+**Addressing Challenges:**
+The models were selected for their fit to the binary nature of the diagnosis problem and their capability to manage non-linear data relationships. Hyperparameter tuning, cross-validation, and grid searches constituted the backbone of the optimization process. Feature selection was informed by both statistical significance and clinical knowledge, ensuring that the models remained relevant and interpretable.
+
+In the end, the models showcased the promising role machine learning can play in medical diagnostics, particularly in lung cancer, where early detection can dramatically alter patient outcomes. The journey through various modeling techniques underscored the need for a nuanced approach to machine learning in healthcare, balancing the technical prowess of complex models with the practical necessity for clarity and clinical relevance.
+
+
+> # **8- Limitations**
+
+- **Sample Size and Diversity:** The dataset used is limited in size or lacks diversity (e.g., in terms of age, gender, ethnicity, or geographical location), the model's predictions might not generalize well to the broader population.
+
+- **Representation of Rare Cases:** The dataset might not adequately represent rare subtypes of lung cancer, which can lead to biased or less accurate predictions for these cases.
+
+- **Overfitting and Generalization:** There is a risk of overfitting the model to the training data, especially with a limited dataset, which can result in poor performance on unseen data.
+
+- **Subjectivity and Bias:** The process of feature selection and engineering can introduce bias, especially if based on subjective decisions or assumptions.
+
+- **Limited Feature Scope:** The model only considers the features included in the dataset. Important predictors of lung cancer not included in the dataset (like genetic factors or environmental exposure) can limit the model's diagnostic capability.
+Clinical Relevance and Validation:
+
+- **Generalizability of Findings:** The findings might be specific to lung cancer and not generalizable to other types of cancer or diseases.
