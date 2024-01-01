@@ -1,0 +1,1 @@
+This project served as my capstone for a comprehensive course in Data Mining. It was an extensive application of machine learning techniques aimed at early detection of lung cancer, which is critical for improving patient prognosis and survival rates.
